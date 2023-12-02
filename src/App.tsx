@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import {  useEffect, useState } from "react";
 import axios from "axios";
-import { FiEdit } from "react-icons/fi";
 import { MdDeleteOutline } from "react-icons/md";
 import Pagination from "./components/Pagination";
 export type User = {
@@ -16,7 +15,6 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage] = useState<number>(10);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedUsers, setSelectedUsers] = useState([]);
   const [selectAllRecords, setSelectAllRecords] = useState(false);
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
@@ -25,7 +23,7 @@ function App() {
     indexOfFirstRecord,
     indexOfLastRecord
   );
-  
+
   const paginate = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
@@ -48,7 +46,7 @@ function App() {
   };
 
   const nextPage = () => {
-    if (currentPage !== Math.ceil(usersDetail?.length / recordsPerPage)) {
+    if (currentPage !== Math.ceil(usersDetail?.length ?? 0 / recordsPerPage)) {
       setCurrentPage(currentPage + 1);
     }
   };
@@ -68,11 +66,11 @@ function App() {
     console.log(searchTerm);
   };
 
-  const deleteUserRecord = (userId) => {
+  const deleteUserRecord = (userId: string) => {
     const newUserArray = usersDetail?.filter((user) => user.id !== userId);
     setUsersDetail(newUserArray);
   };
-  const [editingUserId, setEditingUserId] = useState(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editedUser, setEditedUser] = useState({
     id: "",
     name: "",
@@ -80,20 +78,20 @@ function App() {
     role: "",
   });
 
-  const handleEdit = (userId) => {
+  const handleEdit = (userId: string) => {
     const userToEdit = usersDetail?.find((user) => user.id === userId);
     setEditingUserId(userId);
-    setEditedUser(userToEdit);
+    setEditedUser(userToEdit as User);
   };
 
-  const handleEditChange = (field, value) => {
+  const handleEditChange = (field: string, value: string) => {
     setEditedUser((prevUser) => ({
       ...prevUser,
       [field]: value,
     }));
   };
 
-  const handleSaveChanges = (userId) => {
+  const handleSaveChanges = (userId: string) => {
     // Update the user details in the usersDetail state
     setUsersDetail((prevUsers) =>
       prevUsers?.map((user) =>
