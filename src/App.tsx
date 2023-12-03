@@ -1,23 +1,34 @@
-import {  useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { MdDeleteOutline } from "react-icons/md";
+// Custom Pagination Component
 import Pagination from "./components/Pagination";
+
 export type User = {
   id: string;
   name: string;
   email: string;
   role: string;
+  selected: boolean;
 };
 
 function App() {
   const [usersDetail, setUsersDetail] = useState<User[]>();
-
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage] = useState<number>(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectAllRecords, setSelectAllRecords] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editedUser, setEditedUser] = useState({
+    id: "",
+    name: "",
+    email: "",
+    role: "",
+  });
+
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const totalPages = Math.ceil((usersDetail?.length || 0) / recordsPerPage);
 
   const currentRecords = usersDetail?.slice(
     indexOfFirstRecord,
@@ -26,6 +37,13 @@ function App() {
 
   const paginate = (pageNumber: number) => {
     setCurrentPage(pageNumber);
+  };
+  const handleRowClick = (userId: string) => {
+    setUsersDetail((prevUsers) =>
+      prevUsers?.map((user) =>
+        user.id === userId ? { ...user, selected: !user.selected } : user
+      )
+    );
   };
 
   //Get user details function
@@ -39,18 +57,28 @@ function App() {
       console.log(error);
     }
   };
+  // Function to goto first page
+  const goToFirstPage = () => {
+    setCurrentPage(1);
+  };
+  //Function to go to previous page
   const previousPage = () => {
     if (currentPage !== 1) {
       setCurrentPage(currentPage - 1);
     }
   };
-
+  //Function to go to next page
   const nextPage = () => {
-    if (currentPage !== Math.ceil(usersDetail?.length ?? 0 / recordsPerPage)) {
-      setCurrentPage(currentPage + 1);
+    if (currentPage < totalPages) {
+      setCurrentPage((prevPage) => prevPage + 1);
     }
   };
+  // Function to goto last page
 
+  const goToLastPage = () => {
+    setCurrentPage(totalPages);
+  };
+  //Search Function
   const searchFunction = () => {
     event?.preventDefault();
     console.log("first");
@@ -62,28 +90,21 @@ function App() {
       )
     );
     setUsersDetail(filtered);
-    console.log(filtered);
-    console.log(searchTerm);
   };
-
+  //Delete User
   const deleteUserRecord = (userId: string) => {
     const newUserArray = usersDetail?.filter((user) => user.id !== userId);
     setUsersDetail(newUserArray);
   };
-  const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [editedUser, setEditedUser] = useState({
-    id: "",
-    name: "",
-    email: "",
-    role: "",
-  });
 
+  //User Edit Function
   const handleEdit = (userId: string) => {
     const userToEdit = usersDetail?.find((user) => user.id === userId);
     setEditingUserId(userId);
     setEditedUser(userToEdit as User);
   };
 
+  // User onchange function
   const handleEditChange = (field: string, value: string) => {
     setEditedUser((prevUser) => ({
       ...prevUser,
@@ -91,6 +112,7 @@ function App() {
     }));
   };
 
+  //user change info function
   const handleSaveChanges = (userId: string) => {
     // Update the user details in the usersDetail state
     setUsersDetail((prevUsers) =>
@@ -98,8 +120,6 @@ function App() {
         user.id === userId ? { ...user, ...editedUser } : user
       )
     );
-
-    // Clear the editing state
     setEditingUserId(null);
     setEditedUser({
       id: "",
@@ -108,7 +128,27 @@ function App() {
       role: "",
     });
   };
+  // function to delete selected
+  const handleDeleteSelected = () => {
+    setUsersDetail((prevUsers) => prevUsers?.filter((user) => !user.selected));
+    // Update total pages after deletion
+    setCurrentPage(1);
+    setSelectAllRecords(false);
+  };
+  // Function to handle select all rows
+  const handleSelectAll = () => {
+    setSelectAllRecords(!selectAllRecords);
+    setUsersDetail((prevUsers) =>
+      prevUsers?.map((user, index) => {
+        if (index >= indexOfFirstRecord && index < indexOfLastRecord) {
+          return { ...user, selected: !selectAllRecords };
+        }
+        return user;
+      })
+    );
+  };
 
+  //UseEFfect to get details on first page render
   useEffect(() => {
     getUsersDetail();
   }, []);
@@ -142,10 +182,7 @@ function App() {
                   <th>
                     <input
                       checked={selectAllRecords}
-                      onChange={() => {
-                        console.log("first");
-                        setSelectAllRecords(!selectAllRecords);
-                      }}
+                      onChange={handleSelectAll}
                       type="checkbox"
                       className="w-4 h-4"
                     />
@@ -153,19 +190,29 @@ function App() {
                   <th className="text-xl">Name</th>
                   <th className="text-xl">Email</th>
                   <th className="text-xl">Role</th>
+
+                  <th
+                    onClick={handleDeleteSelected}
+                    className="text-sm cursor-pointer font-normal text-black  "
+                  >
+                    Delete Selected
+                  </th>
                 </tr>
               </thead>
-              <tbody className="">
+              <tbody>
                 {currentRecords?.map((user: User) => (
                   <tr
                     key={user.id}
-                    className=" bg-card rounded-md transition-all  hover:bg-slate-200 bg-slate-50  border h-12 gap-10  border-black  text-center"
+                    className={` bg-card rounded-md transition-all    bg-slate-50  border h-12 gap-10  border-black  text-center ${
+                      user.selected ? " bg-slate-500 text-white" : ""
+                    } `}
                   >
                     <td className="m-10 ">
                       <input
-                        checked={selectAllRecords}
+                        onClick={() => handleRowClick(user.id)}
                         className="w-4 h-4"
                         type="checkbox"
+                        checked={user.selected}
                       />
                     </td>
                     <td>
@@ -200,7 +247,7 @@ function App() {
                           type="text"
                           value={editedUser.role}
                           onChange={(e) =>
-                            handleEditChange("name", e.target.value)
+                            handleEditChange("role", e.target.value)
                           }
                         />
                       ) : (
@@ -209,17 +256,26 @@ function App() {
                     </td>
                     <td>
                       {editingUserId === user.id ? (
-                        <button onClick={() => handleSaveChanges(user.id)}>
+                        <button
+                          className="save"
+                          onClick={() => handleSaveChanges(user.id)}
+                        >
                           Save
                         </button>
                       ) : (
-                        <button onClick={() => handleEdit(user.id)}>
+                        <button
+                          className="edit"
+                          onClick={() => handleEdit(user.id)}
+                        >
                           Edit
                         </button>
                       )}
                       {/* <FiEdit size={20} color="black" /> */}
                     </td>
-                    <td onClick={() => deleteUserRecord(user.id)}>
+                    <td
+                      className="delete"
+                      onClick={() => deleteUserRecord(user.id)}
+                    >
                       <MdDeleteOutline size={20} color="red" />
                     </td>
                   </tr>
@@ -230,14 +286,17 @@ function App() {
               postsPerPage={recordsPerPage}
               totalPosts={usersDetail?.length}
               paginate={paginate}
+              firstPage={goToFirstPage}
               previousPage={previousPage}
               nextPage={nextPage}
+              lastPage={goToLastPage}
               currentPage={currentPage}
             />
           </>
         ) : (
           <div>Loading</div>
         )}
+        {currentRecords?.length === 0 && <h1>No records left</h1>}
       </div>
     </>
   );
