@@ -3,6 +3,8 @@ import axios from "axios";
 import { MdDeleteOutline } from "react-icons/md";
 // Custom Pagination Component
 import Pagination from "./components/Pagination";
+import "react-toastify/dist/ReactToastify.css";
+import { ToastContainer, toast } from "react-toastify";
 
 export type User = {
   id: string;
@@ -19,6 +21,8 @@ function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectAllRecords, setSelectAllRecords] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<User[] | null>();
+
   const [editedUser, setEditedUser] = useState({
     id: "",
     name: "",
@@ -79,22 +83,26 @@ function App() {
     setCurrentPage(totalPages);
   };
   //Search Function
-  const searchFunction = () => {
+  const searchFunction = (input: string) => {
     event?.preventDefault();
-    console.log("first");
     const filtered = usersDetail?.filter((user) =>
       Object.values(user).some(
         (value) =>
           typeof value === "string" &&
-          value.toLowerCase().includes(searchTerm.toLowerCase())
+          value.toLowerCase().includes(input.toLowerCase())
       )
     );
-    setUsersDetail(filtered);
+    if (filtered) {
+      setSearchResults(filtered);
+    }
   };
   //Delete User
   const deleteUserRecord = (userId: string) => {
     const newUserArray = usersDetail?.filter((user) => user.id !== userId);
+    toast("User Deleted");
     setUsersDetail(newUserArray);
+    setSearchResults(newUserArray);
+    setSearchTerm("");
   };
 
   //User Edit Function
@@ -120,6 +128,11 @@ function App() {
         user.id === userId ? { ...user, ...editedUser } : user
       )
     );
+    setSearchResults((prevUsers) =>
+      prevUsers?.map((user) =>
+        user.id === userId ? { ...user, ...editedUser } : user
+      )
+    );
     setEditingUserId(null);
     setEditedUser({
       id: "",
@@ -131,6 +144,9 @@ function App() {
   // function to delete selected
   const handleDeleteSelected = () => {
     setUsersDetail((prevUsers) => prevUsers?.filter((user) => !user.selected));
+    setSearchResults((prevUsers) =>
+      prevUsers?.filter((user) => !user.selected)
+    );
     // Update total pages after deletion
     setCurrentPage(1);
     setSelectAllRecords(false);
@@ -158,9 +174,12 @@ function App() {
       <div className="min-h-screen flex flex-col items-center ">
         <h1 className=" text-xl my-4 ">Admin Dashboard</h1>
         <div className="w-full items-center flex justify-center">
-          <form onSubmit={searchFunction} action="submit">
+          <form onSubmit={() => searchFunction} action="submit">
             <input
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                searchFunction(e.target.value);
+              }}
               placeholder="Search"
               type="text"
               className=" p-2 border-black border-2 rounded-md"
@@ -191,97 +210,184 @@ function App() {
                   <th className="text-xl">Email</th>
                   <th className="text-xl">Role</th>
 
-                  <th
-                    onClick={handleDeleteSelected}
-                    className="text-sm cursor-pointer font-normal text-black  "
-                  >
-                    Delete Selected
-                  </th>
+                  {usersDetail.some((user) => user.selected === true) && (
+                    <>
+                      <th
+                        onClick={handleDeleteSelected}
+                        className="text-sm cursor-pointer font-normal text-black  "
+                      >
+                        Delete Selected
+                      </th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
-                {currentRecords?.map((user: User) => (
-                  <tr
-                    key={user.id}
-                    className={` bg-card rounded-md transition-all    bg-slate-50  border h-12 gap-10  border-black  text-center ${
-                      user.selected ? " bg-slate-500 text-white" : ""
-                    } `}
-                  >
-                    <td className="m-10 ">
-                      <input
-                        onClick={() => handleRowClick(user.id)}
-                        className="w-4 h-4"
-                        type="checkbox"
-                        checked={user.selected}
-                      />
-                    </td>
-                    <td>
-                      {editingUserId === user.id ? (
-                        <input
-                          type="text"
-                          value={editedUser.name}
-                          onChange={(e) =>
-                            handleEditChange("name", e.target.value)
-                          }
-                        />
-                      ) : (
-                        user.name
-                      )}
-                    </td>
-                    <td>
-                      {editingUserId === user.id ? (
-                        <input
-                          type="text"
-                          value={editedUser.email}
-                          onChange={(e) =>
-                            handleEditChange("email", e.target.value)
-                          }
-                        />
-                      ) : (
-                        user.email
-                      )}
-                    </td>
-                    <td>
-                      {editingUserId === user.id ? (
-                        <input
-                          type="text"
-                          value={editedUser.role}
-                          onChange={(e) =>
-                            handleEditChange("role", e.target.value)
-                          }
-                        />
-                      ) : (
-                        user.role
-                      )}
-                    </td>
-                    <td>
-                      {editingUserId === user.id ? (
-                        <button
-                          className="save"
-                          onClick={() => handleSaveChanges(user.id)}
+                {searchTerm.length > 0
+                  ? searchResults?.map((user: User) => (
+                      <tr
+                        key={user.id}
+                        className={`bg-card rounded-md transition-all bg-slate-50 border h-12 gap-10 border-black text-center ${
+                          user.selected ? "bg-slate-500 text-white" : ""
+                        }`}
+                      >
+                        <td className="m-10 ">
+                          <input
+                            onClick={() => handleRowClick(user.id)}
+                            className="w-4 h-4"
+                            type="checkbox"
+                            checked={user.selected}
+                          />
+                        </td>
+                        <td>
+                          {editingUserId === user.id ? (
+                            <input
+                              type="text"
+                              value={editedUser.name}
+                              onChange={(e) =>
+                                handleEditChange("name", e.target.value)
+                              }
+                            />
+                          ) : (
+                            user.name
+                          )}
+                        </td>
+                        <td>
+                          {editingUserId === user.id ? (
+                            <input
+                              type="text"
+                              value={editedUser.email}
+                              onChange={(e) =>
+                                handleEditChange("email", e.target.value)
+                              }
+                            />
+                          ) : (
+                            user.email
+                          )}
+                        </td>
+                        <td>
+                          {editingUserId === user.id ? (
+                            <input
+                              type="text"
+                              value={editedUser.role}
+                              onChange={(e) =>
+                                handleEditChange("role", e.target.value)
+                              }
+                            />
+                          ) : (
+                            user.role
+                          )}
+                        </td>
+                        <td>
+                          {editingUserId === user.id ? (
+                            <button
+                              className="save"
+                              onClick={() => handleSaveChanges(user.id)}
+                            >
+                              Save
+                            </button>
+                          ) : (
+                            <button
+                              className="edit"
+                              onClick={() => handleEdit(user.id)}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          {/* <FiEdit size={20} color="black" /> */}
+                        </td>
+                        <td
+                          className="delete"
+                          onClick={() => deleteUserRecord(user.id)}
                         >
-                          Save
-                        </button>
-                      ) : (
-                        <button
-                          className="edit"
-                          onClick={() => handleEdit(user.id)}
+                          <MdDeleteOutline size={20} color="red" />
+                        </td>
+                      </tr>
+                    ))
+                  : currentRecords?.map((user: User) => (
+                      <tr
+                        key={user.id}
+                        className={`bg-card rounded-md transition-all bg-slate-50 border h-12 gap-10 border-black text-center ${
+                          user.selected ? "bg-slate-500 text-white" : ""
+                        }`}
+                      >
+                        <td className="m-10 ">
+                          <input
+                            onClick={() => handleRowClick(user.id)}
+                            className="w-4 h-4"
+                            type="checkbox"
+                            checked={user.selected}
+                          />
+                        </td>
+                        <td>
+                          {editingUserId === user.id ? (
+                            <input
+                              type="text"
+                              value={editedUser.name}
+                              onChange={(e) =>
+                                handleEditChange("name", e.target.value)
+                              }
+                            />
+                          ) : (
+                            user.name
+                          )}
+                        </td>
+                        <td>
+                          {editingUserId === user.id ? (
+                            <input
+                              type="text"
+                              value={editedUser.email}
+                              onChange={(e) =>
+                                handleEditChange("email", e.target.value)
+                              }
+                            />
+                          ) : (
+                            user.email
+                          )}
+                        </td>
+                        <td>
+                          {editingUserId === user.id ? (
+                            <input
+                              type="text"
+                              value={editedUser.role}
+                              onChange={(e) =>
+                                handleEditChange("role", e.target.value)
+                              }
+                            />
+                          ) : (
+                            user.role
+                          )}
+                        </td>
+                        <td>
+                          {editingUserId === user.id ? (
+                            <button
+                              className="save"
+                              onClick={() => handleSaveChanges(user.id)}
+                            >
+                              Save
+                            </button>
+                          ) : (
+                            <button
+                              className="edit"
+                              onClick={() => handleEdit(user.id)}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          {/* <FiEdit size={20} color="black" /> */}
+                        </td>
+                        <td
+                          className="delete"
+                          onClick={() => deleteUserRecord(user.id)}
                         >
-                          Edit
-                        </button>
-                      )}
-                      {/* <FiEdit size={20} color="black" /> */}
-                    </td>
-                    <td
-                      className="delete"
-                      onClick={() => deleteUserRecord(user.id)}
-                    >
-                      <MdDeleteOutline size={20} color="red" />
-                    </td>
-                  </tr>
-                ))}
+                          <MdDeleteOutline size={20} color="red" />
+                        </td>
+                      </tr>
+                    ))}
               </tbody>
             </table>
+            {currentRecords?.length === 0 && <h1>No records left</h1>}
+
             <Pagination
               postsPerPage={recordsPerPage}
               totalPosts={usersDetail?.length}
@@ -296,8 +402,8 @@ function App() {
         ) : (
           <div>Loading</div>
         )}
-        {currentRecords?.length === 0 && <h1>No records left</h1>}
       </div>
+      <ToastContainer />
     </>
   );
 }
